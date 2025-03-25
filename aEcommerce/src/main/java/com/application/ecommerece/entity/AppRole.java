@@ -1,8 +1,0 @@
-package com.application.ecommerece.entity;
-
-public enum AppRole {
-
-	ROLE_USER,
-	ROLE_SELLER,
-	ROLE_ADMIN
-}
