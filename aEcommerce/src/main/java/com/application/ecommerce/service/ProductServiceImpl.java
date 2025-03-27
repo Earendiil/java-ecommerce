@@ -2,6 +2,7 @@ package com.application.ecommerce.service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,6 +26,8 @@ import com.application.ecommerce.payload.ProductResponse;
 import com.application.ecommerce.repositories.CartRepository;
 import com.application.ecommerce.repositories.CategoryRepository;
 import com.application.ecommerce.repositories.ProductRepository;
+
+import jakarta.persistence.criteria.CriteriaBuilder;
 
 @Service
 public class ProductServiceImpl implements ProductService{
@@ -75,13 +79,26 @@ public class ProductServiceImpl implements ProductService{
 
 
 	@Override
-	public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-		Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-				? Sort.by(sortBy).ascending()
-				: Sort.by(sortBy).descending();
+	public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder, String category, String keyword) {
+		Sort sortByAndOrder = Optional.ofNullable(sortOrder)
+		        .map(order -> order.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending())
+		        .orElse(Sort.by(sortBy).ascending());
+
 		
 		PageRequest pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
-		Page<Product> pageProducts = productRepository.findAll(pageDetails);
+		Specification<Product> spec = Specification.where(null);
+		if (keyword != null && !keyword.isEmpty()) {
+			spec = spec.and((root, query, criteriaBuilder) ->
+	        criteriaBuilder.like(criteriaBuilder.lower(root.get("productName")),
+	            "%" + keyword.toLowerCase() + "%"));
+		}
+		if (category != null && !category.isEmpty()) {
+			spec = spec.and((root, query, criteriaBuilder) -> 
+			 criteriaBuilder.equal(root.get("category").get("categoryName"), category));
+		}
+		
+		
+		Page<Product> pageProducts = productRepository.findAll(spec, pageDetails);
 		
 		List<Product> products = pageProducts.getContent();
 		
