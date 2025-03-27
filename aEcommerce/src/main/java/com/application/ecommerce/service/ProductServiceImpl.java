@@ -151,39 +151,39 @@ public class ProductServiceImpl implements ProductService{
 
 	@Override
 	public ProductDTO updateProduct(ProductDTO productDTO, Long productId) {
-		Product updatedProduct = productRepository.findById(productId)
-				.orElseThrow (() -> new ResourceNotFoundException("Product", "product name", productId));
-		//With this line we can replace the requested parameters to productDTO
-		Product product = modelMapper.map(productDTO, Product.class);
-		
-		updatedProduct.setDescription(product.getDescription());
-		updatedProduct.setDiscount(product.getDiscount());
-		updatedProduct.setPrice(product.getPrice());
-		updatedProduct.setProductName(product.getProductName());
-		updatedProduct.setQuantity(product.getQuantity());
-		updatedProduct.setSpecialPrice(product.getSpecialPrice());
-		if (productDTO.getImage() != null) updatedProduct.setImage(productDTO.getImage());
-	
-		productRepository.save(updatedProduct);
-		
-		  List<Cart> carts = cartRepository.findCartsByProductId(productId);
+	    Product updatedProduct = productRepository.findById(productId)
+	            .orElseThrow(() -> new ResourceNotFoundException("Product", "product name", productId));
 
-	        List<CartDTO> cartDTOs = carts.stream().map(cart -> {
-	            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+	    Product product = modelMapper.map(productDTO, Product.class);
 
-	            List<ProductDTO> products = cart.getCartItems().stream()
-	                    .map(p -> modelMapper.map(p.getProduct(), ProductDTO.class)).collect(Collectors.toList());
+	    updatedProduct.setDescription(product.getDescription());
+	    updatedProduct.setDiscount(product.getDiscount());
+	    updatedProduct.setPrice(product.getPrice());
+	    updatedProduct.setProductName(product.getProductName());
+	    updatedProduct.setQuantity(product.getQuantity());
+	    double specialPrice = updatedProduct.getPrice() - ((updatedProduct.getDiscount() * 0.01) * updatedProduct.getPrice());
+	    updatedProduct.setSpecialPrice(specialPrice);
 
-	            cartDTO.setProducts(products);
+	    if (productDTO.getImage() != null) {
+	        updatedProduct.setImage(productDTO.getImage());
+	    }
+	    productRepository.save(updatedProduct);
 
-	            return cartDTO;
+	    List<Cart> carts = cartRepository.findCartsByProductId(productId);
+	    List<CartDTO> cartDTOs = carts.stream().map(cart -> {
+	        CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+	        List<ProductDTO> products = cart.getCartItems().stream()
+	                .map(p -> modelMapper.map(p.getProduct(), ProductDTO.class))
+	                .collect(Collectors.toList());
+	        cartDTO.setProducts(products);
+	        return cartDTO;
+	    }).collect(Collectors.toList());
 
-	        }).collect(Collectors.toList());
+	    cartDTOs.forEach(cart -> cartService.updateProductInCarts(cart.getCartId(), productId));
 
-	        cartDTOs.forEach(cart -> cartService.updateProductInCarts(cart.getCartId(), productId));
-
-		return modelMapper.map(updatedProduct, ProductDTO.class);
+	    return modelMapper.map(updatedProduct, ProductDTO.class);
 	}
+
 
 
 	@Override
